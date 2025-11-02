@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from sklift.metrics import uplift_by_percentile
+from scipy import stats
+import pandas as pd
 
 def custom_uplift_by_percentile(y_true, uplift, treatment, 
                                kind='line', bins=10, string_percentiles=True, 
@@ -110,3 +112,24 @@ def custom_uplift_by_percentile(y_true, uplift, treatment,
     # оптимизируем расположение элементов на графике
     plt.tight_layout()
     return fig
+
+def cramers_v(x, y):
+    confusion_matrix = pd.crosstab(x, y)
+    chi2 = stats.chi2_contingency(confusion_matrix)[0]
+    n = confusion_matrix.sum().sum()
+    phi2 = chi2 / n
+    r, k = confusion_matrix.shape
+    phi2corr = max(0, phi2 - (k - 1)*(r - 1)/(n - 1))
+    rcorr = r - (r - 1)**2/(n - 1)
+    kcorr = k - (k - 1)**2/(n - 1)
+    return np.sqrt(phi2corr / min((kcorr - 1), (rcorr - 1)))
+
+def eta_squared(y, x):
+    try:
+        groups = [y[x == cat] for cat in np.unique(x)]
+        f_val, p_val = stats.f_oneway(*groups)
+        ss_between = sum(len(g) * (g.mean() - y.mean())**2 for g in groups)
+        ss_total = sum((y - y.mean())**2)
+        return ss_between / ss_total if ss_total != 0 else 0
+    except Exception:
+        return np.nan

@@ -1,1 +1,5 @@
 .uplift_env
+*.tsv
+*.tfevents
+catboost_training.json
+*.pyc
