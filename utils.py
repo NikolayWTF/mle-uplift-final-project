@@ -3,6 +3,8 @@ import numpy as np
 from sklift.metrics import uplift_by_percentile
 from scipy import stats
 import pandas as pd
+from sklift.viz import plot_qini_curve, plot_uplift_curve
+from sklift.metrics import uplift_auc_score, qini_auc_score, uplift_at_k
 
 def custom_uplift_by_percentile(y_true, uplift, treatment, 
                                kind='line', bins=10, string_percentiles=True, 
@@ -133,3 +135,63 @@ def eta_squared(y, x):
         return ss_between / ss_total if ss_total != 0 else 0
     except Exception:
         return np.nan
+
+def plot_uplift_results(y_true, uplift_pred, treatment, k=0.3):
+    """
+    Визуализирует Qini и Uplift кривые и выводит ключевые метрики uplift-модели.
+    
+    Параметры
+    ----------
+    y_true : array-like
+        Фактические значения целевой переменной.
+    uplift_pred : array-like
+        Предсказанные значения uplift (модельный uplift).
+    treatment : array-like
+        Бинарный индикатор treatment-группы (1 — treatment, 0 — control).
+    k : float, optional (default=0.3)
+        Доля топ-N% клиентов для расчёта метрики uplift@k.
+    """
+    
+    # --- Графики ---
+    fig, axs = plt.subplots(2, 1, figsize=(12, 10))
+
+    # Qini Curve
+    plot_qini_curve(
+        y_true,
+        uplift_pred,
+        treatment,
+        perfect=True,
+        ax=axs[0],
+        name='Qini Curve'
+    )
+    axs[0].set_title("Qini Curve")
+
+    # Uplift Curve
+    plot_uplift_curve(
+        y_true,
+        uplift_pred,
+        treatment,
+        perfect=True,
+        ax=axs[1],
+        name='Uplift Curve'
+    )
+    axs[1].set_title("Uplift Curve")
+
+    plt.tight_layout()
+    plt.show()
+
+    # --- Метрики ---
+    qini = qini_auc_score(y_true=y_true, uplift=uplift_pred, treatment=treatment)
+    uplift_auc = uplift_auc_score(y_true=y_true, uplift=uplift_pred, treatment=treatment)
+    uplift_topk = uplift_at_k(y_true=y_true, uplift=uplift_pred, treatment=treatment, strategy='by_group', k=k)
+
+    print("📊 Метрики модели:")
+    print(f"Qini AUC:    {qini:.4f}")
+    print(f"Uplift AUC:  {uplift_auc:.4f}")
+    print(f"Uplift@{int(k*100)}%:  {uplift_topk:.4f}")
+
+    return {
+        "qini_auc": qini,
+        "uplift_auc": uplift_auc,
+        f"uplift@{int(k*100)}%": uplift_topk
+    }
